@@ -3,50 +3,425 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Qualification Predictor</title>
+    <title>Fountain | Smart Applicant System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.8s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        .step-transition { transition: all 0.4s ease; }
+        /* Removed glass-sidebar */
+        .fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-out { animation: fadeOut 0.5s ease-in forwards; }
+        @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+        .bg-grid-pattern {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, #f3f4f6 1px, transparent 1px), linear-gradient(to bottom, #f3f4f6 1px, transparent 1px);
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">Check Qualification</h2>
-        
-        <form id="predictionForm" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Experience (Years)</label>
-                <input type="number" id="exp" name="experience" required
-                    class="mt-1 block w-full border border-gray-300 rounded-md p-2 shadow-sm focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <button type="submit" 
-                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
-                Predict Now
-            </button>
-        </form>
+<body class="bg-white min-h-screen text-black bg-grid-pattern">
 
-        <div id="result" class="mt-6 p-4 hidden rounded-md text-center font-semibold"></div>
+    <div class="flex flex-col lg:flex-row min-h-screen">
+        
+        <!-- Sidebar: AI Evaluation & Profile Summary -->
+        <aside class="w-full lg:w-[280px] bg-white border-r-2 border-black p-6 flex flex-col items-center justify-between z-10 relative">
+            <div class="w-full flex justify-between items-center mb-12">
+                <span class="text-black font-black text-2xl tracking-tighter uppercase">Fountain.</span>
+                <button class="lg:hidden text-black"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg></button>
+            </div>
+
+            <!-- AI Circular Progress -->
+            <div class="relative flex flex-col items-center mb-8 group cursor-help">
+                <svg class="w-24 h-24" viewBox="0 0 128 128">
+                    <circle class="text-gray-100" stroke-width="8" stroke="currentColor" fill="transparent" r="58" cx="64" cy="64"/>
+                    <circle id="progressCircle" class="text-black progress-ring__circle" stroke-width="8" stroke-dasharray="364.4" stroke-dashoffset="364.4" stroke-linecap="round" stroke="currentColor" fill="transparent" r="58" cx="64" cy="64"/>
+                </svg>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                    <span id="scoreVal" class="text-3xl font-black tracking-tighter">0</span><span class="text-sm font-bold">%</span>
+                    <p class="text-[10px] uppercase tracking-widest font-bold mt-1 text-gray-400">Match Rate</p>
+                </div>
+                
+                <!-- Tooltip -->
+                <div class="absolute bottom-full mb-4 w-56 p-4 bg-black text-white text-xs font-medium leading-relaxed text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]">
+                    This score represents the AI's estimated compatibility between your profile and the target role.
+                    <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black"></div>
+                </div>
+            </div>
+
+            <!-- Steps Indicator -->
+            <div class="w-full space-y-4 mb-auto pl-4 border-l-2 border-gray-100">
+                <div id="step-ind-0" class="step-item transition-opacity duration-300 opacity-100">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">01</p>
+                    <p class="font-bold text-sm tracking-tight">Target Role</p>
+                </div>
+                <div id="step-ind-1" class="step-item transition-opacity duration-300 opacity-30">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">02</p>
+                    <p class="font-bold text-sm tracking-tight">Company</p>
+                </div>
+                <div id="step-ind-2" class="step-item transition-opacity duration-300 opacity-30">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">03</p>
+                    <p class="font-bold text-sm tracking-tight">Resume</p>
+                </div>
+            </div>
+            
+            <div class="w-full pt-6 border-t-2 border-gray-100">
+                <div class="flex justify-between items-end">
+                    <div class="text-[10px] font-bold uppercase tracking-widest opacity-40">System v2.0</div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Questionnaire Area -->
+        <main class="flex-1 p-6 lg:p-12 flex flex-col relative overflow-hidden">
+            <!-- Decorative background element -->
+            <div class="absolute top-0 right-0 w-64 h-64 bg-gray-50 rounded-bl-full -z-10"></div>
+
+            <header class="flex justify-between items-center mb-8">
+                <div class="flex items-center space-x-4">
+                    <div class="w-3 h-3 bg-black"></div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Application For: <span id="headerPos" class="text-black border-b-2 border-black pb-1 ml-2">Pending...</span></p>
+                </div>
+            </header>
+
+            <div id="formStep" class="flex-1 flex flex-col max-w-2xl mx-auto w-full justify-center">
+                <span id="stepCounter" class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Question 01 / 05</span>
+                <h2 id="stepTitle" class="text-4xl font-black text-black mb-8 tracking-tighter leading-tight">What is your target role?</h2>
+                
+                <form id="multiStepForm" class="space-y-8">
+                    <!-- Steps will be managed by JS -->
+                    <div id="inputContainer" class="relative group w-full">
+                        <input type="text" id="mainInput" required
+                            class="w-full bg-transparent border-b-4 border-gray-100 pb-2 text-2xl lg:text-3xl font-bold outline-none focus:border-black transition-all duration-300 placeholder:text-gray-200 rounded-none font-serif"
+                            placeholder="Type here..." autocomplete="off">
+                        
+                        <!-- New File Upload Design -->
+                        <label id="fileDropArea" for="resumeFile" class="hidden w-full h-48 border-2 border-dashed border-gray-300 hover:border-black hover:bg-gray-50 flex flex-col justify-center items-center cursor-pointer transition-all duration-300 group">
+                            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-black group-hover:text-white transition-colors">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                            </div>
+                            <span class="font-black uppercase tracking-widest text-xs mb-2">Upload Resume</span>
+                            <span class="text-xs text-gray-400 uppercase tracking-widest">PDF Format Only</span>
+                            <span id="fileNameDisplay" class="text-black font-bold mt-4 text-lg border-b-2 border-black pb-1 empty:hidden"></span>
+                        </label>
+                        <input type="file" id="resumeFile" accept=".pdf" class="hidden">
+                    </div>
+
+                    <div class="flex items-center justify-between pt-8">
+                        <button type="button" id="prevBtn" class="text-gray-400 font-bold text-xs hover:text-black transition hidden uppercase tracking-[0.2em] flex items-center">
+                            <span class="mr-2">←</span> Back
+                        </button>
+                        <button type="submit" id="nextBtn" class="group relative bg-black text-white px-8 py-4 font-bold hover:bg-white hover:text-black border-2 border-black transition-all duration-300 rounded-none uppercase tracking-widest text-xs ml-auto overflow-hidden">
+                            <span class="relative z-10">Next Step</span>
+                            <div class="absolute inset-0 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300 ease-out -z-0"></div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Result Overlay (Initially Hidden) -->
+            <div id="finalResult" class="hidden flex-1 flex flex-col max-w-2xl mx-auto w-full justify-center text-center">
+                <div id="decisionBadge" class="inline-block mx-auto px-6 py-2 border-2 border-black text-xs font-black uppercase tracking-[0.2em] mb-6 bg-white"></div>
+                <h2 id="resTitle" class="text-4xl font-black text-black mb-6 tracking-tighter">Evaluation Complete</h2>
+                <p id="resDesc" class="text-lg text-gray-700 mb-8 leading-relaxed font-serif italic"></p>
+                
+                <!-- Analysis Reasons Section -->
+                <div id="reasonsContainer" class="text-left w-full border-t-2 border-black pt-6 mb-8 hidden">
+                    <h3 class="text-xs font-black uppercase tracking-widest mb-4 text-gray-400">Analysis Report</h3>
+                    <ul id="reasonsList" class="space-y-3 font-mono text-xs"></ul>
+                </div>
+
+                <button onclick="location.reload()" class="bg-white text-black border-2 border-black px-8 py-3 font-bold text-xs hover:bg-black hover:text-white transition-colors uppercase tracking-widest rounded-none mx-auto">Run Another Test</button>
+            </div>
+
+            <!-- Footer Removed -->
+        </main>
+
     </div>
 
     <script>
-        document.getElementById('predictionForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const resultDiv = document.getElementById('result');
-            const formData = new FormData(e.target);
+        // Steps are now mutable (let instead of const) to allow dynamic additions
+        let steps = [
+            { id: 'position', title: 'What is your target position?', placeholder: 'e.g. Lead Software Engineer', type: 'text' },
+            { id: 'company', title: 'Which company are you applying for?', placeholder: 'e.g. OpenAI', type: 'text' },
+            { id: 'resume', title: 'Upload your resume to generate questions', placeholder: '', type: 'file' }
+        ];
 
-            resultDiv.classList.remove('hidden', 'bg-green-100', 'bg-red-100');
-            resultDiv.innerText = "Processing...";
+        let currentStep = 0;
+        let formData = { position: '', company: '', resume: null, answers: {} };
+        let questionsGenerated = false;
 
-            try {
-                const response = await fetch('backend.php', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
+        const mainInput = document.getElementById('mainInput');
+        const fileDropArea = document.getElementById('fileDropArea');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const resumeFile = document.getElementById('resumeFile');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const stepTitle = document.getElementById('stepTitle');
+        const stepCounter = document.getElementById('stepCounter');
+        const headerPos = document.getElementById('headerPos');
 
-                resultDiv.classList.add('block', data.status === 'success' ? 'bg-green-100' : 'bg-red-100');
-                resultDiv.innerText = data.prediction || data.error;
-            } catch (error) {
-                resultDiv.innerText = "Error connecting to server.";
+        function updateUI() {
+            const step = steps[currentStep];
+            stepTitle.innerText = step.title;
+            stepCounter.innerText = `Question ${String(currentStep + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
+            
+            if (step.type === 'file') {
+                mainInput.classList.add('hidden');
+                fileDropArea.classList.remove('hidden');
+                mainInput.required = false;
+            } else {
+                mainInput.classList.remove('hidden');
+                fileDropArea.classList.add('hidden');
+                mainInput.value = formData[step.id];
+                mainInput.placeholder = step.placeholder;
+                mainInput.type = step.type; // Handle number vs text
+                mainInput.required = true;
+                mainInput.focus();
+            }
+
+            prevBtn.classList.toggle('hidden', currentStep === 0);
+            nextBtn.querySelector('span').innerText = currentStep === steps.length - 1 ? 'FINISH EVALUATION' : 'NEXT STEP';
+            
+            // Update Sidebar Indicators
+            // Simple logic to highlight current step in sidebar (limited to first 3 for static UI)
+            const indicators = document.querySelectorAll('.step-item');
+            if (indicators[currentStep]) {
+                indicators.forEach(el => el.classList.add('opacity-30'));
+                indicators[currentStep].classList.remove('opacity-30');
+                indicators[currentStep].classList.add('opacity-100');
+            }
+        }
+
+        resumeFile.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                formData.resume = e.target.files[0];
+                fileNameDisplay.innerText = e.target.files[0].name;
             }
         });
+
+        prevBtn.addEventListener('click', () => {
+            currentStep--;
+            updateUI();
+        });
+
+        document.getElementById('multiStepForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validation for Experience
+            // (Removed static experience validation as it is now dynamic)
+
+            if (steps[currentStep].type !== 'file') {
+                // Store answers. If it's a dynamic question, store in 'answers' object
+                if (steps[currentStep].isDynamic) {
+                    formData.answers[steps[currentStep].id] = mainInput.value;
+                } else {
+                    formData[steps[currentStep].id] = mainInput.value;
+                }
+                if (currentStep === 0) headerPos.innerText = mainInput.value;
+            }
+
+            // Check if we need to generate questions (after Resume step)
+            if (steps[currentStep].id === 'resume' && !questionsGenerated) {
+                await generateQuestions();
+                return;
+            }
+
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                updateUI();
+            } else {
+                // Final Submission
+                runEvaluation();
+            }
+        });
+
+        async function generateQuestions() {
+            nextBtn.disabled = true;
+            nextBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> GENERATING QUESTIONS...`;
+
+            const data = new FormData();
+            data.append('position', formData.position);
+            data.append('company', formData.company);
+            data.append('resume', formData.resume);
+
+            try {
+                // Call backend with action=generate_questions
+                const response = await fetch('backend.php?action=generate_questions', {
+                    method: 'POST',
+                    body: data
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Server Error");
+                }
+                
+                // Handle streaming response
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let resultText = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    resultText += decoder.decode(value, { stream: true });
+                }
+                
+                const result = JSON.parse(resultText);
+                
+                if (result.questions && Array.isArray(result.questions)) {
+                    // Append new questions to the steps array
+                    result.questions.forEach((q, index) => {
+                        steps.push({
+                            id: `question_${index}`,
+                            title: q,
+                            placeholder: 'Type your answer...',
+                            type: 'text', // Could be textarea if we want longer answers
+                            isDynamic: true
+                        });
+                    });
+                    questionsGenerated = true;
+                    currentStep++;
+                    updateUI();
+                } else {
+                    throw new Error("No questions returned");
+                }
+            } catch (err) {
+                alert(`Generation failed: ${err.message}. Using default flow.`);
+                // Fallback or error handling
+                questionsGenerated = true;
+                currentStep++;
+                updateUI();
+            } finally {
+                nextBtn.disabled = false;
+            }
+        }
+
+        async function runEvaluation() {
+            // Simulated Processing Steps
+            const steps = ["Extracting Data...", "Analyzing Skills...", "Comparing Profile...", "Calculating Score..."];
+            let stepIdx = 0;
+            
+            nextBtn.disabled = true;
+            const updateLoader = () => {
+                nextBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-current inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg> ${steps[stepIdx++ % steps.length]}`;
+            };
+            
+            updateLoader();
+            const intervalId = setInterval(updateLoader, 800);
+
+            const submissionData = new FormData();
+            submissionData.append('position', formData.position);
+            submissionData.append('company', formData.company);
+            submissionData.append('resume', formData.resume);
+            submissionData.append('answers', JSON.stringify(formData.answers)); // Send collected answers
+            submissionData.append('adaptability_score', '0.5');
+
+            try {
+                const response = await fetch('backend.php?action=predict', {
+                    method: 'POST',
+                    body: submissionData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Evaluation failed");
+                }
+
+                const result = await response.json();
+                
+                clearInterval(intervalId);
+                
+                const formStep = document.getElementById('formStep');
+                formStep.classList.add('fade-out');
+                setTimeout(() => {
+                    formStep.classList.add('hidden');
+                    showFinalResults(result);
+                }, 500);
+
+            } catch (err) {
+                clearInterval(intervalId);
+                alert(`Error: ${err.message}`);
+                nextBtn.disabled = false;
+                nextBtn.innerHTML = '<span class="relative z-10">FINISH EVALUATION</span>';
+            }
+        }
+
+        function setScore(percent) {
+            const circle = document.getElementById('progressCircle');
+            const radius = circle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            const offset = circumference - (percent / 100 * circumference);
+            circle.style.strokeDashoffset = offset;
+            
+            // Animate number
+            const scoreElement = document.getElementById('scoreVal');
+            const duration = 800; // ms, matches CSS transition
+            const startTime = performance.now();
+
+            function updateNumber(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const currentVal = Math.floor(progress * percent);
+                scoreElement.innerText = currentVal;
+
+                if (progress < 1) {
+                    requestAnimationFrame(updateNumber);
+                } else {
+                    scoreElement.innerText = percent;
+                }
+            }
+            
+            requestAnimationFrame(updateNumber);
+        }
+
+        function showFinalResults(data) {
+            document.getElementById('finalResult').classList.remove('hidden');
+            document.getElementById('finalResult').classList.add('fade-in');
+            
+            const badge = document.getElementById('decisionBadge');
+            badge.innerText = data.decision;
+            // Minimalist styling
+            badge.style.borderColor = 'black';
+            badge.style.color = 'black';
+            
+            document.getElementById('resDesc').innerText = data.recommendation;
+            
+            // Handle Reasons
+            const reasonsList = document.getElementById('reasonsList');
+            const reasonsContainer = document.getElementById('reasonsContainer');
+            reasonsList.innerHTML = '';
+            
+            // Check if backend returns reasons, otherwise use recommendation sentences
+            const reasons = data.reasons || (data.recommendation ? data.recommendation.split('. ').filter(s => s.length > 10) : []);
+            
+            if (reasons.length > 0) {
+                reasonsContainer.classList.remove('hidden');
+                reasons.forEach(r => {
+                    const li = document.createElement('li');
+                    li.className = "flex items-start before:content-['+'] before:mr-4 before:font-bold before:text-gray-400 p-4 border border-gray-100 hover:border-black transition-colors";
+                    li.innerText = r.replace(/\.$/, '');
+                    reasonsList.appendChild(li);
+                });
+            }
+
+            setScore(Math.round(data.overall_score * 100));
+        }
+
+        updateUI();
     </script>
 </body>
 </html>
